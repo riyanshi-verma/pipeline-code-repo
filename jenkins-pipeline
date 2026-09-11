@@ -1,52 +1,66 @@
-```groovy
 pipeline {
     agent any
 
     parameters {
-        choice(name: 'ENV', choices: ['dev', 'test', 'prod'], description: 'Select environment')
-        string(name: 'APP_NAME', defaultValue: 'HelloWorld', description: 'Enter application name')
+        choice(name: 'REGION', choices: ['Mumbai', 'Delhi', 'Bangalore'], description: 'Select deployment region')
+        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run tests?')
+        string(name: 'VERSION', defaultValue: '2.0', description: 'Enter application version')
     }
 
     environment {
-        VERSION = '1.0'
+        APP_ENV = 'staging'
+        OWNER = 'Jenkins'
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Prepare') {
             steps {
-                echo "Checking out source code..."
+                echo "Preparing deployment..."
+                echo "Application version: ${params.VERSION}"
             }
         }
 
-        stage('Build') {
+        stage('Compile') {
             steps {
-                echo "Building ${params.APP_NAME}..."
+                echo "Compiling application..."
             }
         }
 
         stage('Test') {
+            when {
+                expression {
+                    params.RUN_TESTS
+                }
+            }
             steps {
-                echo "Running tests..."
+                echo "Running application tests..."
             }
         }
 
-        stage('Package') {
+        stage('Create Artifact') {
             steps {
-                echo "Creating package..."
+                echo "Creating deployment artifact..."
+            }
+        }
+
+        stage('Approval') {
+            steps {
+                input message: "Deploy version ${params.VERSION} to ${params.REGION}?", ok: 'Approve'
             }
         }
 
         stage('Deploy') {
             steps {
-                input message: "Deploy ${params.APP_NAME} to ${params.ENV}?", ok: 'Deploy'
-                echo "Deploying application..."
+                echo "Deploying application to ${params.REGION}..."
+                echo "Environment: ${env.APP_ENV}"
+                echo "Owner: ${env.OWNER}"
             }
         }
 
-        stage('Verify') {
+        stage('Health Check') {
             steps {
-                echo "Verifying deployment..."
+                echo "Checking application health..."
             }
         }
     }
@@ -54,32 +68,31 @@ pipeline {
     post {
 
         always {
-            echo "Always: Pipeline finished"
+            echo "Pipeline execution completed"
         }
 
         success {
-            echo "Success: Deployment completed successfully"
+            echo "Deployment successful"
         }
 
         failure {
-            echo "Failure: Pipeline failed"
+            echo "Deployment failed"
         }
 
         unstable {
-            echo "Unstable: Check test results"
+            echo "Deployment completed with warnings"
         }
 
         changed {
-            echo "Changed: Build status changed"
+            echo "Build status has changed"
         }
 
         aborted {
-            echo "Aborted: Pipeline was stopped"
+            echo "Deployment was aborted"
         }
 
         cleanup {
-            echo "Cleanup: Removing temporary files"
+            echo "Performing final cleanup"
         }
     }
 }
-```
